@@ -25,7 +25,7 @@ public class UserService {
         return userRepository.findAll().stream().map(this::mapToUserResponse).toList();
     }
 
-    public Optional<UserResponse> fetchUserById(Long id){
+    public Optional<UserResponse> fetchUserById(String id){
         return userRepository.findById(id).map(this::mapToUserResponse);
     }
 
@@ -35,7 +35,7 @@ public class UserService {
     }
 
     @Transactional
-    public boolean updateUser(Long id, UserRequest userRequest){
+    public boolean updateUser(String id, UserRequest userRequest){
         return userRepository.findById(id)
                 .map(existingUser -> {
                     existingUser.setFirstName(userRequest.getFirstName());
@@ -66,7 +66,7 @@ public class UserService {
 
     private  UserResponse mapToUserResponse(User user){
         UserResponse userResponse = new UserResponse();
-        userResponse.setId(user.getId().toString());
+        userResponse.setId(user.getId());
         userResponse.setFirstName(user.getFirstName());
         userResponse.setLastName(user.getLastName());
         userResponse.setEmail(user.getEmail());
@@ -74,7 +74,6 @@ public class UserService {
         userResponse.setRole(user.getRole());
         if (user.getAddress() != null) {
             AddressDTO addressDTO = new AddressDTO();
-            addressDTO.setId(user.getAddress().getId().toString());
             addressDTO.setStreet(user.getAddress().getStreet());
             addressDTO.setCity(user.getAddress().getCity());
             addressDTO.setState(user.getAddress().getState());

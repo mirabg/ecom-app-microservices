@@ -14,6 +14,19 @@ services:
     networks:
       - postgres
     restart: unless-stopped
+  mongodb:
+    container_name: mongodb_container
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb:/data/db
+    networks:
+      - postgres
+    restart: unless-stopped
   pgadmin:
     container_name: pgadmin_container
     image: dpage/pgadmin4
@@ -35,3 +48,4 @@ networks:
 volumes:
     pgadmin:
     postgres:
+    mongodb:

@@ -6,9 +6,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -16,7 +20,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Testcontainers
 class UserControllerE2ETest {
+
+    @Container
+    @ServiceConnection
+    static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7");
 
     @Autowired
     private MockMvc mockMvc;
@@ -63,7 +72,7 @@ class UserControllerE2ETest {
             }
             """;
 
-    /** Helper: create a user and return their string ID from the GET-all list. */
+    /** Helper: create a user and return their MongoDB string ID from the GET-all list. */
     private String createUserAndGetId(String userJson) throws Exception {
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -151,7 +160,6 @@ class UserControllerE2ETest {
                 .andExpect(status().isOk())
                 .andExpect(content().string("User updated successfully"));
 
-        // Verify the fields were actually updated
         mockMvc.perform(get("/api/users/{id}", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.firstName").value("Jonathan"))
@@ -182,13 +190,13 @@ class UserControllerE2ETest {
 
     @Test
     void getUserByNonExistentIdReturnsNotFound() throws Exception {
-        mockMvc.perform(get("/api/users/99999"))
+        mockMvc.perform(get("/api/users/nonexistentid123"))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void updateNonExistentUserReturnsNotFound() throws Exception {
-        mockMvc.perform(put("/api/users/99999")
+        mockMvc.perform(put("/api/users/nonexistentid123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(JOHN_JSON))
                 .andExpect(status().isNotFound());

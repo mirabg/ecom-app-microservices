@@ -1,15 +1,9 @@
 spring:
   application:
     name: user-service
-  datasource:
-    url: jdbc:postgresql://localhost:5432/userdb
-    username: root
-    password: root
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    show-sql: true
-    hibernate:
-      ddl-auto: create
-    database: postgresql
+  data:
+    mongodb:
+      uri: mongodb://root:root@localhost:27017/userdb?authSource=admin
+      
 server:
   port: 8082
