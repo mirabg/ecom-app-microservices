@@ -1,4 +1,16 @@
 services:
+  rabbitmq:
+    image: rabbitmq:3.9.29-management
+    container_name: rabbitmq-bus
+    ports:
+      - "5672:5672"   # AMQP protocol port for Spring Cloud Bus
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
   postgres:
     container_name: postgres_container
     image: postgres:14
@@ -49,3 +61,4 @@ volumes:
     pgadmin:
     postgres:
     mongodb:
+    rabbitmq_data:
