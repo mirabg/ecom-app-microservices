@@ -1,2 +1,8 @@
+spring:
+  cloud:
+    config:
+      enabled: false
+      import-check:
+        enabled: false
 server:
   port: 0

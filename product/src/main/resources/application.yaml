@@ -1,15 +1,5 @@
 spring:
   application:
     name: product-service
-  datasource:
-    url: jdbc:postgresql://localhost:5432/productdb
-    username: root
-    password: root
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    show-sql: true
-    hibernate:
-      ddl-auto: create
-    database: postgresql
-server:
-  port: 8083
+  config:
+    import: optional:configserver:http://localhost:8888
