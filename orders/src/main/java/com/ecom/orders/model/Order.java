@@ -18,7 +18,7 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long userId;
+    private String userId;
     private BigDecimal totalAmount;
     private OrderStatus orderStatus = OrderStatus.PENDING;
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)

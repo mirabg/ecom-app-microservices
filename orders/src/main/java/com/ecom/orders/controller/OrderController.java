@@ -22,7 +22,7 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(@RequestHeader("X-User-ID") String userId) {
-        Optional<Long> parsedUserId = parseUserId(userId);
+        Optional<String> parsedUserId = parseUserId(userId);
         if (parsedUserId.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
@@ -32,11 +32,11 @@ public class OrderController {
                 .orElseGet(() -> ResponseEntity.badRequest().build());
     }
 
-    private Optional<Long> parseUserId(String userId) {
-        try {
-            return Optional.of(Long.parseLong(userId));
-        } catch (NumberFormatException ex) {
+    private Optional<String> parseUserId(String userId) {
+        if (userId == null) {
             return Optional.empty();
         }
+        String normalized = userId.trim();
+        return normalized.isEmpty() ? Optional.empty() : Optional.of(normalized);
     }
 }

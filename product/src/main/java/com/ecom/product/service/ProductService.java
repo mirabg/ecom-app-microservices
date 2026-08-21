@@ -90,4 +90,10 @@ public class ProductService {
     public List<ProductResponse> searchProducts(String keyword) {
         return productRepository.searchProducts(keyword).stream().map(this::mapProductToProductResponse).toList();
     }
+
+    public ProductResponse fetchProductById(Long id) {
+        return productRepository.findByIdAndActiveTrue(id)
+                .map(this::mapProductToProductResponse)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
+    }
 }

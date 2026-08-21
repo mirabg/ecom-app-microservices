@@ -26,7 +26,7 @@ public class OrderService {
     }
 
     @Transactional
-    public Optional<OrderResponse> createOrder(Long userId) {
+    public Optional<OrderResponse> createOrder(String userId) {
         Optional<List<CartItemResponse>> cartItemsOpt = cartService.getCartItems(userId);
         if (cartItemsOpt.isEmpty()) {
             return Optional.empty();

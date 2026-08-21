@@ -21,7 +21,7 @@ public class CartController {
 
     @PostMapping
     public ResponseEntity<String> addToCart(@RequestHeader("X-User-ID") String userId, @RequestBody CartItemRequest request){
-        Optional<Long> parsedUserId = parseUserId(userId);
+        Optional<String> parsedUserId = parseUserId(userId);
         if (parsedUserId.isEmpty()) {
             return ResponseEntity.badRequest().body("Invalid X-User-ID header");
         }
@@ -36,7 +36,7 @@ public class CartController {
 
     @DeleteMapping("/items/{productId}")
     public ResponseEntity<Void> removeFromCart(@RequestHeader("X-User-ID") String userId, @PathVariable Long productId){
-        Optional<Long> parsedUserId = parseUserId(userId);
+        Optional<String> parsedUserId = parseUserId(userId);
         if (parsedUserId.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
@@ -51,7 +51,7 @@ public class CartController {
 
     @GetMapping
     public ResponseEntity<List<CartItemResponse>> getCartItems(@RequestHeader("X-User-ID") String userId) {
-        Optional<Long> parsedUserId = parseUserId(userId);
+        Optional<String> parsedUserId = parseUserId(userId);
         if (parsedUserId.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
@@ -62,12 +62,12 @@ public class CartController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    private Optional<Long> parseUserId(String userId) {
-        try {
-            return Optional.of(Long.parseLong(userId));
-        } catch (NumberFormatException ex) {
+    private Optional<String> parseUserId(String userId) {
+        if (userId == null) {
             return Optional.empty();
         }
+        String normalized = userId.trim();
+        return normalized.isEmpty() ? Optional.empty() : Optional.of(normalized);
     }
 
 

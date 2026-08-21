@@ -1,0 +1,164 @@
+### Orders API end-to-end requests
+### This file includes setup calls to user-service and product-service,
+### then exercises every orders endpoint.
+###
+### Update these base URLs to match your local ports or gateway routes.
+@orderBaseUrl = http://localhost:8084
+@userBaseUrl = http://localhost:8082
+@productBaseUrl = http://localhost:8083
+
+### ---------------------------
+### Setup: preload one user
+### ---------------------------
+< {%
+  client.global.set("runId", String(Date.now()));
+%}
+POST {{userBaseUrl}}/api/users
+Content-Type: application/json
+
+{
+  "firstName": "Order",
+  "lastName": "Tester",
+  "email": "order-tester-{{runId}}@example.com",
+  "phone": "555-0101",
+  "address": {
+    "street": "123 Test St",
+    "city": "Austin",
+    "state": "TX",
+    "zip": "78701",
+    "country": "US"
+  }
+}
+
+### Resolve created user id from list by email
+GET {{userBaseUrl}}/api/users
+
+> {%
+  const targetEmail = `order-tester-${client.global.get("runId")}@example.com`;
+  const user = response.body.find(u => u.email === targetEmail);
+  if (!user) throw new Error(`Could not find created user with email ${targetEmail}`);
+  client.global.set("userId", String(user.id));
+%}
+
+### Verify created user is reachable by id
+GET {{userBaseUrl}}/api/users/{{userId}}
+
+### ------------------------------
+### Setup: preload test products
+### ------------------------------
+POST {{productBaseUrl}}/api/products
+Content-Type: application/json
+
+{
+  "name": "Order Test Product A {{runId}}",
+  "description": "Product A used for order API testing",
+  "price": 10.00,
+  "stockQuantity": 50,
+  "category": "Testing",
+  "imageUrl": "https://example.com/a.jpg"
+}
+
+> {%
+  client.global.set("productIdA", String(response.body.id));
+%}
+
+### Verify created product A
+GET {{productBaseUrl}}/api/products/{{productIdA}}
+
+POST {{productBaseUrl}}/api/products
+Content-Type: application/json
+
+{
+  "name": "Order Test Product B {{runId}}",
+  "description": "Product B used for order API testing",
+  "price": 15.00,
+  "stockQuantity": 50,
+  "category": "Testing",
+  "imageUrl": "https://example.com/b.jpg"
+}
+
+> {%
+  client.global.set("productIdB", String(response.body.id));
+%}
+
+### Verify created product B
+GET {{productBaseUrl}}/api/products/{{productIdB}}
+
+### ==================================================
+### Orders service endpoints (cart + order operations)
+### ==================================================
+
+### 1) POST /api/cart - add item A
+POST {{orderBaseUrl}}/api/cart
+X-User-ID: {{userId}}
+Content-Type: application/json
+
+{
+  "productId": {{productIdA}},
+  "quantity": 2
+}
+
+### 2) GET /api/cart - verify cart has 1 item
+GET {{orderBaseUrl}}/api/cart
+X-User-ID: {{userId}}
+
+### 3) POST /api/cart - add same item again (quantity aggregation path)
+POST {{orderBaseUrl}}/api/cart
+X-User-ID: {{userId}}
+Content-Type: application/json
+
+{
+  "productId": {{productIdA}},
+  "quantity": 1
+}
+
+### 4) GET /api/cart - verify updated quantity
+GET {{orderBaseUrl}}/api/cart
+X-User-ID: {{userId}}
+
+### 5) DELETE /api/cart/items/{productId} - remove item A
+DELETE {{orderBaseUrl}}/api/cart/items/{{productIdA}}
+X-User-ID: {{userId}}
+
+### 6) GET /api/cart - expected 404 after remove
+GET {{orderBaseUrl}}/api/cart
+X-User-ID: {{userId}}
+
+### 7) POST /api/cart - add item A again
+POST {{orderBaseUrl}}/api/cart
+X-User-ID: {{userId}}
+Content-Type: application/json
+
+{
+  "productId": {{productIdA}},
+  "quantity": 2
+}
+
+### 8) POST /api/cart - add item B
+POST {{orderBaseUrl}}/api/cart
+X-User-ID: {{userId}}
+Content-Type: application/json
+
+{
+  "productId": {{productIdB}},
+  "quantity": 1
+}
+
+### 9) POST /api/orders - create order from cart
+POST {{orderBaseUrl}}/api/orders
+X-User-ID: {{userId}}
+
+### 10) GET /api/cart - expected 404 after order creation (cart cleared)
+GET {{orderBaseUrl}}/api/cart
+X-User-ID: {{userId}}
+
+### Optional negative check: invalid user header should return 400
+POST {{orderBaseUrl}}/api/cart
+X-User-ID: abc
+Content-Type: application/json
+
+{
+  "productId": {{productIdA}},
+  "quantity": 1
+}
+

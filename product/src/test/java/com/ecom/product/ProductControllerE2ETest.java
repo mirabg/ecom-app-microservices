@@ -86,6 +86,30 @@ class ProductControllerE2ETest {
     }
 
     @Test
+    void getProductByIdReturnsActiveProduct() throws Exception {
+        String createJson = mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(LAPTOP_JSON))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        long id = ((Number) JsonPath.read(createJson, "$.id")).longValue();
+
+        mockMvc.perform(get("/api/products/{id}", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.name").value("Laptop"))
+                .andExpect(jsonPath("$.price").value(999.99))
+                .andExpect(jsonPath("$.active").value(true));
+    }
+
+    @Test
+    void getProductByIdReturnsNotFoundForNonExistentProduct() throws Exception {
+        mockMvc.perform(get("/api/products/{id}", 99999L))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void updateProductUpdatesFieldsCorrectly() throws Exception {
         String createJson = mockMvc.perform(post("/api/products")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -133,6 +157,10 @@ class ProductControllerE2ETest {
         mockMvc.perform(get("/api/products"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
+
+        // Soft-deleted product should return 404 for fetch-by-id endpoint
+        mockMvc.perform(get("/api/products/{id}", id))
+                .andExpect(status().isNotFound());
     }
 
     @Test
