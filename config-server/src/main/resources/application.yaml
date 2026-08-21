@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: config-server
+  cloud:
+    stream:
+      rabbit:
+        rabbit:
+          default:
+            consumer:
+              quorum:
+                enabled: true
+    config:
+      server:
+        git:
+          uri: https://github.com/mirabg/app-configuration
+server:
+  port: 8888
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
