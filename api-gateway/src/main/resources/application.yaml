@@ -43,6 +43,12 @@ management:
     web:
       exposure:
         include: "*"
+  endpoint:
+    # The gateway actuator endpoint defaults to access=none, so
+    # /actuator/gateway/routes 404s even when exposed via the wildcard above.
+    # read-only permits GET (inspect resolved routes) but not POST (refresh).
+    gateway:
+      access: read-only
   tracing:
     sampling:
       probability: 1.0
