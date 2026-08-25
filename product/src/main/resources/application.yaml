@@ -3,3 +3,9 @@ spring:
     name: product-service
   config:
     import: optional:configserver:http://localhost:8888
+logging:
+  level:
+    root: INFO
+    com.ecom.product: DEBUG
+  file:
+    name: logs/${spring.application.name}.log

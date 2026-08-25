@@ -1,6 +1,8 @@
 spring:
   application:
     name: config-server
+  profiles:
+    active: native
   cloud:
     stream:
       rabbit:
@@ -11,8 +13,8 @@ spring:
                 enabled: true
     config:
       server:
-        git:
-          uri: https://github.com/mirabg/app-configuration
+        native:
+          search-locations: classpath:/config/
 server:
   port: 8888
 eureka:

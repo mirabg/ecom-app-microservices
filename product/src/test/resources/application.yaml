@@ -20,3 +20,7 @@ spring:
 server:
   port: 0
 
+# Tests must not export spans to a real Zipkin collector
+management:
+  tracing:
+    enabled: false

@@ -19,4 +19,11 @@ Thumbs.db
 
 # Logs
 *.log
+*.log.*.gz
+logs/
 
+# Local container runtime state (Loki/MinIO volumes, etc.)
+.data/
+
+# Local secrets
+.env

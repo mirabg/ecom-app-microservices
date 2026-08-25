@@ -24,8 +24,17 @@ services:
     ports:
         - "5432:5432"
     networks:
-      - postgres
+      - backend
     restart: unless-stopped
+  zipkin:
+    container_name: zipkin_container
+    image: openzipkin/zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - backend
+    restart: unless-stopped
+
   mongodb:
     container_name: mongodb_container
     image: mongo:7
@@ -37,7 +46,7 @@ services:
     volumes:
       - mongodb:/data/db
     networks:
-      - postgres
+      - backend
     restart: unless-stopped
   pgadmin:
     container_name: pgadmin_container
@@ -51,11 +60,11 @@ services:
     ports:
       - "5050:80"
     networks:
-        - postgres
+        - backend
     restart: unless-stopped
 
 networks:
-    postgres:
+    backend:
       driver: bridge
 volumes:
     pgadmin:
