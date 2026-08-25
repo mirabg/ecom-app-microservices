@@ -1,0 +1,14 @@
+# Keep the context-load test hermetic: no Eureka registration, no span export.
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+management:
+  tracing:
+    enabled: false
+
+server:
+  port: 0
+

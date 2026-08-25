@@ -3,6 +3,7 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/additional/ecom-application" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/api-gateway" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/config-server" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/eureka" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/orders" vcs="Git" />
