@@ -6,6 +6,7 @@
     <mapping directory="$PROJECT_DIR$/api-gateway" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/config-server" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/eureka" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/notification-service" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/orders" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/product" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/user" vcs="Git" />

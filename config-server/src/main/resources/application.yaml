@@ -4,12 +4,6 @@ spring:
   profiles:
     active: native
   cloud:
-    stream:
-      rabbit:
-        default:
-          consumer:
-            quorum:
-              enabled: true
     config:
       server:
         native:

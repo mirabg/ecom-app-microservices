@@ -2,8 +2,10 @@ package com.ecom.orders.controller;
 
 import com.ecom.orders.dto.OrderResponse;
 import com.ecom.orders.service.OrderService;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,9 +17,11 @@ import java.util.Optional;
 @RequestMapping("/api/orders")
 public class OrderController {
     private final OrderService orderService;
+    private final RabbitTemplate rabbitTemplate;
 
-    public OrderController(OrderService orderService) {
+    public OrderController(OrderService orderService, RabbitTemplate rabbitTemplate) {
         this.orderService = orderService;
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     @PostMapping
@@ -30,6 +34,13 @@ public class OrderController {
         return orderService.createOrder(parsedUserId.get())
                 .map(orderResponse -> new ResponseEntity<>(orderResponse, HttpStatus.CREATED))
                 .orElseGet(() -> ResponseEntity.badRequest().build());
+    }
+
+    @GetMapping("/test-order-notification")
+    public String testOrderNotification() {
+        // Uses the exchange/routing key already configured on rabbitTemplate in RabbitMqConfig
+        rabbitTemplate.convertAndSend("Test order notification message");
+        return "testOrderNotification";
     }
 
     private Optional<String> parseUserId(String userId) {
