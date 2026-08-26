@@ -25,6 +25,7 @@ public class GatewayConfig {
                                 config.setName("gatewayCircuitBreaker")
                                 .setFallbackUri("forward:/fallback")))
                         .uri("lb://PRODUCT-SERVICE"))
+
                 .route("order-service", r -> r.path("/api/orders/**", "/api/cart/**")
                         .uri("lb://ORDER-SERVICE"))
                 .route("user-service", r -> r.path("/api/users/**")

@@ -82,11 +82,11 @@ logging:
   level:
     root: INFO
 
-# Circuit Breaker Configuration
+# Circuit Breaker / Rate Limiter Configuration
 resilience4j:
   circuitbreaker:
     instances:
-      gatewayCircuitBreaker: 
+      gatewayCircuitBreaker:
         registerHealthIndicator: true
         slidingWindowSize: 10
         minimumNumberOfCalls: 5
@@ -96,7 +96,16 @@ resilience4j:
         eventConsumerBufferSize: 10
         automaticTransitionFromOpenToHalfOpenEnabled: true
         slidingWindowType: COUNT_BASED
-
-
-
+  # Applied globally in RateLimiterFilter.
+  ratelimiter:
+    instances:
+      gatewayRateLimiter:
+        registerHealthIndicator: true
+        # Allow this many requests per refresh period...
+        limitForPeriod: 20
+        # ...refreshed every second (i.e. ~20 requests/sec sustained).
+        limitRefreshPeriod: 1s
+        # How long a request waits for a permit to free up before being
+        # rejected with 429, rather than failing immediately.
+        timeoutDuration: 0
 
