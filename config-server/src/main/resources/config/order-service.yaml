@@ -62,3 +62,11 @@ resilience4j:
         eventConsumerBufferSize: 10
         automaticTransitionFromOpenToHalfOpenEnabled: true
         slidingWindowType: COUNT_BASED
+  retry:
+    instances:
+      orderServiceRetry:
+        maxAttempts: 3
+        waitDuration: 2s
+        retryExceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.ResourceAccessException

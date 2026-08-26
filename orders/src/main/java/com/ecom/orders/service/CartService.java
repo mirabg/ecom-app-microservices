@@ -9,7 +9,9 @@ import com.ecom.orders.dto.ProductResponse;
 import com.ecom.orders.dto.UserResponse;
 import com.ecom.orders.model.CartItem;
 import com.ecom.orders.repository.CartItemRepository;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.RetryRegistry;
+import io.github.resilience4j.retry.annotation.Retry;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,15 +24,30 @@ import java.util.Optional;
 @Service
 @Transactional(readOnly = true)
 public class CartService {
+    private static final String ORDER_SERVICE_RETRY = "orderServiceRetry";
+
     private final ProductServiceClient productServiceClient;
     private final UserServiceClient userServiceClient;
-
     private final CartItemRepository cartItemRepository;
+    private final RetryRegistry retryRegistry;
 
-    public CartService(ProductServiceClient productServiceClient, UserServiceClient userServiceClient, CartItemRepository cartItemRepository) {
+    public CartService(ProductServiceClient productServiceClient, UserServiceClient userServiceClient,
+                        CartItemRepository cartItemRepository, RetryRegistry retryRegistry) {
         this.productServiceClient = productServiceClient;
         this.userServiceClient = userServiceClient;
         this.cartItemRepository = cartItemRepository;
+        this.retryRegistry = retryRegistry;
+    }
+
+    // Resilience4j's Retry tracks the attempt count per invocation internally
+    // (thread-safe, resets automatically for every call) - no need for a
+    // manually-managed field on this singleton bean, which would never reset
+    // and would race across concurrent requests/threads.
+    @PostConstruct
+    void logRetryAttempts() {
+        retryRegistry.retry(ORDER_SERVICE_RETRY).getEventPublisher()
+                .onRetry(event -> log.info("{} retry attempt {}",
+                        event.getName(), event.getNumberOfRetryAttempts()));
     }
 
     public boolean addToCartFallback(String userId, CartItemRequest request, Throwable throwable) {
@@ -39,9 +56,11 @@ public class CartService {
     }
 
     @Transactional
-    @CircuitBreaker(name ="orderServiceCircuitBreaker", fallbackMethod = "addToCartFallback")
+    //@CircuitBreaker(name ="orderServiceCircuitBreaker", fallbackMethod = "addToCartFallback")
+    @Retry(name = ORDER_SERVICE_RETRY, fallbackMethod = "addToCartFallback")
     public boolean addToCart(String userId, CartItemRequest request) {
         if (userId == null || userId.isBlank()) {
+
             return false;
         }
 
