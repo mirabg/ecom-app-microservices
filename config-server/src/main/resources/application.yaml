@@ -6,11 +6,10 @@ spring:
   cloud:
     stream:
       rabbit:
-        rabbit:
-          default:
-            consumer:
-              quorum:
-                enabled: true
+        default:
+          consumer:
+            quorum:
+              enabled: true
     config:
       server:
         native:

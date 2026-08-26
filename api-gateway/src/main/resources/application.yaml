@@ -1,64 +1,8 @@
 spring:
   application:
     name: api-gateway
-  cloud:
-    gateway:
-      # NOTE: Spring Cloud Gateway 5.x moved route config from
-      # `spring.cloud.gateway.routes` to `spring.cloud.gateway.server.webflux.routes`.
-      # The old prefix is silently ignored - the gateway starts with zero routes
-      # and every request 404s.
-      server:
-        webflux:
-          routes:
-            - id: product-service
-              uri: lb://product-service
-              predicates:
-                - Path=/api/products/**
-            - id: user-service
-              uri: lb://user-service
-              predicates:
-                - Path=/api/users/**
-            # Comma-separated patterns map to the Path predicate's `patterns` list.
-            # Do NOT put a space after the comma - it becomes part of the pattern.
-            - id: order-service
-              uri: lb://order-service
-              predicates:
-                - Path=/api/orders/**,/api/cart/**
-
-server:
-  port: 8080
-
-# `lb://<service-id>` resolves via Eureka, so the gateway must be a registered client.
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
-    register-with-eureka: true
-    fetch-registry: true
-  instance:
-    prefer-ip-address: true
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: "*"
-  endpoint:
-    # The gateway actuator endpoint defaults to access=none, so
-    # /actuator/gateway/routes 404s even when exposed via the wildcard above.
-    # read-only permits GET (inspect resolved routes) but not POST (refresh).
-    gateway:
-      access: read-only
-  tracing:
-    sampling:
-      probability: 1.0
-  zipkin:
-    tracing:
-      endpoint: ${ZIPKIN_TRACING_ENDPOINT:http://localhost:9411/api/v2/spans}
-
-logging:
-  level:
-    root: INFO
+  config:
+    import: optional:configserver:http://localhost:8888
 
 
 

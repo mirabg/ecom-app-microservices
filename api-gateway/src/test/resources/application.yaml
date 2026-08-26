@@ -1,4 +1,12 @@
-# Keep the context-load test hermetic: no Eureka registration, no span export.
+# Keep the context-load test hermetic: no config server, no Eureka registration,
+# no span export.
+spring:
+  cloud:
+    config:
+      enabled: false
+      import-check:
+        enabled: false
+
 eureka:
   client:
     enabled: false
