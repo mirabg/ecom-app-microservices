@@ -1,46 +1,7 @@
-#spring:
-#  cloud:
-#    gateway:
-#      # NOTE: Spring Cloud Gateway 5.x moved route config from
-#      # `spring.cloud.gateway.routes` to `spring.cloud.gateway.server.webflux.routes`.
-#      # The old prefix is silently ignored - the gateway starts with zero routes
-#      # and every request 404s.
-#      server:
-#        webflux:
-#          routes:
-#            - id: product-service
-#              uri: lb://product-service
-#              predicates:
-#                - Path=/api/products/**
-#            - id: user-service
-#              uri: lb://user-service
-#              predicates:
-#                - Path=/api/users/**
-#            # Comma-separated patterns map to the Path predicate's `patterns` list.
-#            # Do NOT put a space after the comma - it becomes part of the pattern.
-#            - id: order-service
-#              uri: lb://order-service
-#              predicates:
-#                - Path=/api/orders/**,/api/cart/**
-#            # Eureka does not register with itself (register-with-eureka: false
-#            # in eureka/application.yaml), so it never appears as a load-balanced
-#            # instance - `lb://` can't resolve it. Route directly to its host:port
-#            # instead. Two routes are needed because the dashboard HTML is served
-#            # at "/" and its CSS/JS are linked with paths relative to the current
-#            # URL (e.g. "eureka/css/wro.css", no leading slash), so a browser at
-#            # /eureka/dashboard resolves them as /eureka/eureka/css/wro.css.
-#            - id: eureka-dashboard
-#              uri: ${EUREKA_DASHBOARD_URL:http://localhost:8761}
-#              predicates:
-#                - Path=/eureka/dashboard
-#              filters:
-#                - SetPath=/
-#            - id: eureka-dashboard-assets
-#              uri: ${EUREKA_DASHBOARD_URL:http://localhost:8761}
-#              predicates:
-#                - Path=/eureka/eureka/**
-#              filters:
-#                - StripPrefix=1
+# Gateway routes are defined in code (api-gateway's GatewayConfig
+# RouteLocator bean), not here - Spring Cloud Gateway route config was
+# intentionally moved out of config-server. Only non-route settings
+# (server port, Eureka client, actuator, tracing) remain here.
 
 server:
   port: 8080
