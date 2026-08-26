@@ -28,7 +28,7 @@ public class CartController {
 
         boolean saved = cartService.addToCart(parsedUserId.get(), request);
         if(!saved) {
-            return ResponseEntity.badRequest().body("Invalid userId or productId");
+            return ResponseEntity.badRequest().body("Error adding item to cart.");
         }else {
             return ResponseEntity.status(HttpStatus.CREATED).build();
         }

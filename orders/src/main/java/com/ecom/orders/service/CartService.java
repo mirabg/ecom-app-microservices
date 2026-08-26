@@ -9,6 +9,8 @@ import com.ecom.orders.dto.ProductResponse;
 import com.ecom.orders.dto.UserResponse;
 import com.ecom.orders.model.CartItem;
 import com.ecom.orders.repository.CartItemRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @Transactional(readOnly = true)
 public class CartService {
@@ -30,7 +33,13 @@ public class CartService {
         this.cartItemRepository = cartItemRepository;
     }
 
+    public boolean addToCartFallback(String userId, CartItemRequest request, Throwable throwable) {
+        log.warn("Fallback method called for addToCart due to: {}", throwable.getMessage());
+        return false;
+    }
+
     @Transactional
+    @CircuitBreaker(name ="orderServiceCircuitBreaker", fallbackMethod = "addToCartFallback")
     public boolean addToCart(String userId, CartItemRequest request) {
         if (userId == null || userId.isBlank()) {
             return false;
