@@ -66,12 +66,11 @@ See the environment variable table in the root [README](../README.md).
 
 ## Applying a change
 
-The YAML is packaged inside the jar, so editing a file is not enough:
+The YAML is packaged inside the jar, so editing a file is not enough. The
+Dockerfile compiles the module inside the image, so one command rebuilds and
+redeploys:
 
 ```bash
-cd config-server
-./mvnw clean package -DskipTests
-cd ..
 docker compose up -d --build config-server
 
 # clients only read config at startup
@@ -82,6 +81,22 @@ docker compose restart api-gateway product-service order-service \
 Spring Cloud Bus (`spring-cloud-starter-bus-amqp`) is on the classpath, so
 `POST /actuator/busrefresh` can broadcast a refresh instead of restarting -
 but note that only `@RefreshScope` beans pick up changes that way.
+
+## Actuator is on port 8889
+
+The config server maps `/{application}/{profile}` at the root, which swallows
+`/actuator/health` — it resolves as application=`actuator`, profile=`health`
+and returns config JSON instead of a health response. Actuator therefore runs
+on its own port:
+
+```bash
+curl http://localhost:8889/actuator/health
+curl http://localhost:8889/actuator/health/readiness   # for Kubernetes probes
+```
+
+Note this module needs an explicit `spring-boot-starter-actuator` dependency;
+without it there is no `/actuator` at all and `management.server.port` is
+silently ignored.
 
 ## Running locally
 

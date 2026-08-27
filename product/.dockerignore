@@ -1,19 +1,8 @@
-# The Dockerfile copies the fat jar from target/, so target/ must NOT be
-# ignored here - only everything that is irrelevant to the image.
-src/
+# Multi-stage build: src/, mvnw and .mvn/ MUST reach the build context.
+# Only build output and editor cruft is excluded.
+target/
 logs/
 .idea/
 *.iml
-.mvn/
-mvnw
-mvnw.cmd
 HELP.md
 README.md
-target/*.jar.original
-target/classes/
-target/generated-sources/
-target/generated-test-sources/
-target/maven-archiver/
-target/maven-status/
-target/surefire-reports/
-target/test-classes/

@@ -1,6 +1,9 @@
 spring:
   application:
     name: config-server
+  # Let in-flight requests finish when the container/pod gets SIGTERM.
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   profiles:
     active: native
   cloud:
@@ -16,7 +19,33 @@ spring:
     username: ${RABBITMQ_USER:guest}
     password: ${RABBITMQ_PASSWORD:guest}
 server:
+  shutdown: graceful
   port: 8888
+
+management:
+  # The config server maps /{application}/{profile}, which swallows
+  # /actuator/health (it resolves as application="actuator", profile="health").
+  # Serving actuator on its own port keeps the probe endpoints reachable - and
+  # is good practice anyway, since it keeps them off the public port.
+  server:
+    port: 8889
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+      # Exposes /actuator/health/liveness and /actuator/health/readiness for
+      # Kubernetes probes.
+      probes:
+        enabled: true
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+
 eureka:
   client:
     register-with-eureka: true

@@ -101,6 +101,7 @@ services:
     build: ./config-server
     ports:
       - "8888:8888"
+      - "8889:8889"   # actuator/probes (see config-server application.yaml)
     environment:
       EUREKA_URL: http://eureka:8761/eureka/
       EUREKA_INSTANCE_HOSTNAME: config-server

@@ -43,6 +43,15 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
+        <!-- Without this the app has no /actuator at all: health probes are
+             unavailable and `management.server.port` is silently ignored, so
+             requests to /actuator/health fall through to the config server's
+             own /{application}/{profile} mapping and come back as config JSON
+             for an application literally named "actuator". -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

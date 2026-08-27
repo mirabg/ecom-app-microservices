@@ -1,4 +1,7 @@
 spring:
+  # Let in-flight requests finish when the container/pod gets SIGTERM.
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   application:
     name: product-service
   datasource:
@@ -20,6 +23,7 @@ spring:
     username: ${RABBITMQ_USER:guest}
     password: ${RABBITMQ_PASSWORD:guest}
 server:
+  shutdown: graceful
   port: 8083
 management:
   tracing:
@@ -40,8 +44,16 @@ management:
   endpoint:
     health:
       show-details: always
+      # Exposes /actuator/health/liveness and /actuator/health/readiness for
+      # Kubernetes probes.
+      probes:
+        enabled: true
   health:
     circuitbreakers:
+      enabled: true
+    livenessState:
+      enabled: true
+    readinessState:
       enabled: true
 eureka:
   client:

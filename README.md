@@ -30,29 +30,26 @@ RabbitMQ, and distributed tracing to Zipkin. Everything runs in Docker.
 
 ## Prerequisites
 
-- Docker Desktop (or any Docker engine with Compose v2)
-- JDK 25+ (the config-server module targets 26) — only needed to build the jars
+- Docker Desktop (or any Docker engine with Compose v2 and BuildKit)
 - ~6 GB free RAM for the full stack
+- A JDK is **not** required — the images compile the source themselves. You
+  only need one (25+, or 26 for `config-server`) to run a service from the IDE.
 
 ## Quick start
 
-The Dockerfiles copy a pre-built fat jar from each module's `target/`, so the
-jars must be built **before** the images.
+Images are built with multi-stage Dockerfiles that compile the source inside
+the image, so there is **no separate jar build step** — Docker is the only
+prerequisite:
 
 ```bash
-# 1. build every jar
-for m in eureka config-server api-gateway user product orders notification-service; do
-  (cd "$m" && ./mvnw clean package -DskipTests) || break
-done
-
-# 2. build images and start everything
 docker compose up -d --build
-
-# 3. watch it come up (config clients retry for ~2 min while config-server boots)
 docker compose ps
 ```
 
-First start takes 1-2 minutes: Keycloak imports its realm, Postgres runs
+First build takes ~1-2 minutes (all modules share one BuildKit Maven cache).
+Subsequent builds reuse it.
+
+First start takes another 1-2 minutes: Keycloak imports its realm, Postgres runs
 `init-db.sql`, and the Spring services retry against `config-server` until it
 is serving.
 
@@ -66,6 +63,9 @@ variable. Copy `.env.example` to `.env` only if you want to override something.
 for p in 8761 8082 8083 8084 8085; do
   printf "%s -> " "$p"; curl -s "http://localhost:$p/actuator/health" | head -c 40; echo
 done
+
+# config-server serves actuator on its own port (see below)
+curl -s http://localhost:8889/actuator/health
 
 # six services registered, each with a container hostname
 open http://localhost:8761
@@ -105,6 +105,67 @@ curl -X POST http://localhost:8080/api/cart \
 
 There are also ready-made request collections: `product-endpoints.http`,
 `orders-endpoints.http`, `user-endpoints.http`.
+
+## Container images
+
+Each module has a three-stage Dockerfile:
+
+1. **build** — compiles with the Maven wrapper inside `eclipse-temurin:<n>-jdk`.
+   A BuildKit cache mount (`id=maven,sharing=locked`) gives all seven modules a
+   single shared local repository. `sharing=locked` is required: with the
+   default `sharing=shared` the parallel builds corrupt each other's repo and
+   fail with exit 127.
+2. **extract** — splits the fat jar with `-Djarmode=tools ... extract`
+   (`layertools` was removed in Boot 4).
+3. **runtime** — `eclipse-temurin:<n>-jre`, non-root `spring` user.
+
+This gives ~205 MB images where the 111 MB dependency layer is cached and only
+a ~33 kB application layer changes between commits — which matters a lot for
+Kubernetes rollout speed.
+
+`JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=75` makes the heap follow the
+container/pod memory limit rather than the host's total RAM.
+
+Building for a cluster whose nodes differ from your machine:
+
+```bash
+docker buildx build --platform linux/amd64 -t <registry>/product-service:<tag> ./product
+```
+
+## Kubernetes readiness
+
+Already in place:
+
+| Concern | Status |
+|---|---|
+| Non-root containers | `USER spring` (uid 999) — satisfies PodSecurity `restricted` |
+| Liveness/readiness probes | `/actuator/health/liveness`, `/actuator/health/readiness` |
+| Graceful shutdown | `server.shutdown: graceful`, 30s grace; deregisters from Eureka before exit |
+| Heap vs. memory limit | `MaxRAMPercentage=75` |
+| Config via environment | Every host is an overridable placeholder |
+
+Probe groups deliberately contain **only** `livenessState`/`readinessState`, so
+a database or config-server blip cannot flap every pod out of rotation at once.
+
+`config-server` serves actuator on **port 8889**, because its own
+`/{application}/{profile}` mapping otherwise swallows `/actuator/health`
+(it resolves as application=`actuator`, profile=`health`).
+
+Still to do when you deploy:
+
+- **Flip `EUREKA_PREFER_IP` to `true`.** It is `false` for Compose so containers
+  advertise their service name; pods have no resolvable hostname, so this must
+  invert. It is already an environment variable — no code change.
+- **Set `JPA_DDL_AUTO=validate`** and manage schema with Flyway/Liquibase.
+  `update` across multiple replicas means concurrent schema mutation.
+- **Move the Keycloak client secret into a `Secret`.**
+- **Add resource requests/limits**, plus `terminationGracePeriodSeconds: 45`
+  and a `preStop` sleep so endpoints drain before the JVM exits.
+- **Reconsider Eureka and Config Server.** Kubernetes Services provide DNS
+  discovery and ConfigMaps provide config; keeping both is fine but is two
+  extra deployments doing what the platform already does.
+
+
 
 ## Authorization model
 
@@ -147,11 +208,11 @@ Config lives in two places:
 2. **Everything else** — `config-server/src/main/resources/config/<service>.yaml`,
    served over HTTP. See [config-server/README.md](config-server/README.md).
 
-Changing a served config file requires rebuilding the config-server jar and
-image, because the files are packaged inside it:
+Changing a served config file requires rebuilding the config-server image,
+because the files are packaged inside its jar. The build happens in the image,
+so this is a single command:
 
 ```bash
-(cd config-server && ./mvnw clean package -DskipTests)
 docker compose up -d --build config-server
 docker compose restart product-service order-service user-service notification-service api-gateway
 ```
@@ -178,7 +239,7 @@ ones. See `.env.example` for the full list with explanations.
 
 ```bash
 docker compose logs -f order-service          # tail one service
-docker compose up -d --build product-service  # rebuild one service (after ./mvnw package)
+docker compose up -d --build product-service  # rebuild one service
 docker compose restart user-service           # restart
 docker compose down                           # stop, keep data
 docker compose down -v                        # stop and DELETE all data

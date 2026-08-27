@@ -43,6 +43,7 @@
 #                - StripPrefix=1
 
 server:
+  shutdown: graceful
   port: 8080
 
 # `lb://<service-id>` resolves via Eureka, so the gateway must be a registered client.
@@ -67,10 +68,18 @@ management:
     # read-only permits GET (inspect resolved routes) but not POST (refresh).
     gateway:
       access: read-only
-      health:
-        show-details: always
+    health:
+      show-details: always
+      # Exposes /actuator/health/liveness and /actuator/health/readiness for
+      # Kubernetes probes.
+      probes:
+        enabled: true
   health:
     circuitbreakers:
+      enabled: true
+    livenessState:
+      enabled: true
+    readinessState:
       enabled: true
   tracing:
     sampling:
@@ -113,6 +122,9 @@ resilience4j:
         timeoutDuration: 0
 
 spring:
+  # Let in-flight requests finish when the container/pod gets SIGTERM.
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   security:
     oauth2:
       resourceserver:
