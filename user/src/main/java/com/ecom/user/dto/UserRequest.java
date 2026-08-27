@@ -9,4 +9,9 @@ public class UserRequest {
     private String email;
     private String phone;
     private AddressDTO address;
+    /**
+     * Initial login password. Only ever forwarded to Keycloak when creating
+     * the account - never persisted in the local User document.
+     */
+    private String password;
 }

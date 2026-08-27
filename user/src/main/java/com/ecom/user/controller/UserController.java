@@ -4,6 +4,7 @@ package com.ecom.user.controller;
 import com.ecom.user.dto.UserRequest;
 import com.ecom.user.dto.UserResponse;
 import com.ecom.user.service.UserService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,9 +32,9 @@ public class UserController {
     }
 
     @PostMapping
-    public String createUser(@RequestBody UserRequest userRequest){
-        userService.createUser(userRequest);
-        return "User created successfully";
+    public ResponseEntity<UserResponse> createUser(@RequestBody UserRequest userRequest){
+        UserResponse created = userService.createUser(userRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PutMapping("/{id}")

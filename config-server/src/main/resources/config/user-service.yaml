@@ -35,6 +35,20 @@ eureka:
       defaultZone: http://localhost:8761/eureka
     register-with-eureka: true
     fetch-registry: true
+
+# Used by KeycloakAdminClient to provision a Keycloak user (and assign a realm
+# role) whenever a new local User is created. admin-client-id/secret must be a
+# CONFIDENTIAL client in this realm with "Service accounts roles" enabled and
+# the realm-management client roles "manage-users" and "view-users" granted to
+# its service account - it is only used for Admin REST API calls, never for
+# end-user login.
+keycloak:
+  server-url: ${KEYCLOAK_SERVER_URL:http://localhost:8180}
+  realm: ${KEYCLOAK_REALM:ecom-app}
+  admin-client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:user-service-admin}
+  admin-client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:2iaX0dpf1zkXq7k7fLKHj9Yjg2rOs41L}
+  default-role: ${KEYCLOAK_DEFAULT_ROLE:USER}
+
 logging:
   level:
     root: INFO

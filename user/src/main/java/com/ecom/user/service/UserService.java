@@ -1,11 +1,14 @@
 package com.ecom.user.service;
 
+import com.ecom.user.client.KeycloakAdminClient;
 import com.ecom.user.dto.AddressDTO;
 import com.ecom.user.model.User;
 import com.ecom.user.dto.UserRequest;
 import com.ecom.user.dto.UserResponse;
 import com.ecom.user.model.Address;
 import com.ecom.user.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,10 +18,14 @@ import java.util.Optional;
 @Service
 @Transactional(readOnly = true)
 public class UserService {
-    private final UserRepository userRepository;
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
-    public UserService(UserRepository userRepository) {
+    private final UserRepository userRepository;
+    private final KeycloakAdminClient keycloakAdminClient;
+
+    public UserService(UserRepository userRepository, KeycloakAdminClient keycloakAdminClient) {
         this.userRepository = userRepository;
+        this.keycloakAdminClient = keycloakAdminClient;
     }
 
     public List<UserResponse> fetchAllUsers(){
@@ -29,9 +36,25 @@ public class UserService {
         return userRepository.findById(id).map(this::mapToUserResponse);
     }
 
+    /**
+     * Provisions the user in Keycloak first (so we have an identity/"sub" to
+     * key off of), then creates the local profile with keycloakId populated.
+     * If the local save fails, the Keycloak user is deleted so the two stores
+     * don't drift out of sync.
+     */
     @Transactional
-    public void createUser(UserRequest userRequest){
-        userRepository.save(mapUserRequestToUser(userRequest));
+    public UserResponse createUser(UserRequest userRequest){
+        String keycloakId = keycloakAdminClient.createUser(userRequest);
+        try {
+            User user = mapUserRequestToUser(userRequest);
+            user.setKeycloakId(keycloakId);
+            User saved = userRepository.save(user);
+            return mapToUserResponse(saved);
+        } catch (RuntimeException ex) {
+            log.error("Local persistence failed after creating Keycloak user {} - rolling back", keycloakId, ex);
+            keycloakAdminClient.deleteUser(keycloakId);
+            throw ex;
+        }
     }
 
     @Transactional
@@ -67,6 +90,7 @@ public class UserService {
     private  UserResponse mapToUserResponse(User user){
         UserResponse userResponse = new UserResponse();
         userResponse.setId(user.getId());
+        userResponse.setKeycloakId(user.getKeycloakId());
         userResponse.setFirstName(user.getFirstName());
         userResponse.setLastName(user.getLastName());
         userResponse.setEmail(user.getEmail());

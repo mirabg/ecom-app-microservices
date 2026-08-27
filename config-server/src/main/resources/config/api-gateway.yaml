@@ -109,3 +109,10 @@ resilience4j:
         # rejected with 429, rather than failing immediately.
         timeoutDuration: 0
 
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/ecom-app}
+

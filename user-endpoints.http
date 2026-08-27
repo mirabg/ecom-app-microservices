@@ -1,0 +1,133 @@
+### User API end-to-end requests
+### Exercises POST /api/users (which now also provisions a Keycloak user via
+### KeycloakAdminClient) and cross-checks the result directly against the
+### Keycloak Admin REST API.
+###
+### Update these to match your local ports / gateway routes / realm setup.
+@userBaseUrl = http://localhost:8082
+@keycloakBaseUrl = http://localhost:8180
+@keycloakRealm = ecom-app
+@keycloakAdminClientId = user-service-admin
+@keycloakAdminClientSecret = 2iaX0dpf1zkXq7k7fLKHj9Yjg2rOs41L
+
+### ---------------------------------------------------------
+### 1) Create a user - triggers Keycloak provisioning + local save
+### ---------------------------------------------------------
+< {%
+  client.global.set("runId", String(Date.now()));
+%}
+POST {{userBaseUrl}}/api/users
+Content-Type: application/json
+
+{
+  "firstName": "Http",
+  "lastName": "Tester",
+  "email": "http-tester-{{runId}}@example.com",
+  "phone": "555-0102",
+  "address": {
+    "street": "1 Test Way",
+    "city": "Austin",
+    "state": "TX",
+    "zip": "78701",
+    "country": "US"
+  },
+  "password": "Passw0rd!"
+}
+
+> {%
+  client.test("response is 201 Created", () => {
+    if (response.status !== 201) throw new Error(`Expected 201, got ${response.status}: ${JSON.stringify(response.body)}`);
+  });
+  client.test("keycloakId is present in response", () => {
+    if (!response.body.keycloakId) throw new Error("keycloakId missing from UserResponse - check KeycloakAdminClient wiring");
+  });
+  client.global.set("newUserId", response.body.id);
+  client.global.set("newUserKeycloakId", response.body.keycloakId);
+  client.global.set("newUserEmail", `http-tester-${client.global.get("runId")}@example.com`);
+%}
+
+### ------------------------------------------------------------
+### 2) Verify the local user document was saved with keycloakId
+### ------------------------------------------------------------
+GET {{userBaseUrl}}/api/users/{{newUserId}}
+
+> {%
+  client.test("local user has keycloakId set", () => {
+    if (!response.body.keycloakId) throw new Error("Local User document is missing keycloakId");
+  });
+%}
+
+### ---------------------------------------------------------------
+### 3) Get a Keycloak admin token (as the user-service-admin client)
+### ---------------------------------------------------------------
+POST {{keycloakBaseUrl}}/realms/{{keycloakRealm}}/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials&client_id={{keycloakAdminClientId}}&client_secret={{keycloakAdminClientSecret}}
+
+> {%
+  client.global.set("kcAdminToken", response.body.access_token);
+%}
+
+### -----------------------------------------------------------
+### 4) Verify the Keycloak user actually exists and matches
+### -----------------------------------------------------------
+GET {{keycloakBaseUrl}}/admin/realms/{{keycloakRealm}}/users/{{newUserKeycloakId}}
+Authorization: Bearer {{kcAdminToken}}
+
+> {%
+  client.test("Keycloak user email matches", () => {
+    if (response.body.email !== client.global.get("newUserEmail")) {
+      throw new Error(`Expected email ${client.global.get("newUserEmail")}, got ${response.body.email}`);
+    }
+  });
+%}
+
+### -----------------------------------------------------------------
+### 5) Verify the Keycloak user was granted the default realm role
+### -----------------------------------------------------------------
+GET {{keycloakBaseUrl}}/admin/realms/{{keycloakRealm}}/users/{{newUserKeycloakId}}/role-mappings/realm
+Authorization: Bearer {{kcAdminToken}}
+
+> {%
+  client.test("USER realm role is assigned", () => {
+    const hasRole = response.body.some(r => r.name === "USER");
+    if (!hasRole) throw new Error(`Expected USER role, got: ${JSON.stringify(response.body)}`);
+  });
+%}
+
+### -----------------------------------------------------------------------
+### 6) Negative test: duplicate email should fail without leaving orphans
+### (Keycloak rejects the duplicate username/email before the local Mongo
+### save is ever attempted, so no compensating delete should be needed.)
+### -----------------------------------------------------------------------
+POST {{userBaseUrl}}/api/users
+Content-Type: application/json
+
+{
+  "firstName": "Http",
+  "lastName": "Tester",
+  "email": "http-tester-{{runId}}@example.com",
+  "phone": "555-0102",
+  "address": {
+    "street": "1 Test Way",
+    "city": "Austin",
+    "state": "TX",
+    "zip": "78701",
+    "country": "US"
+  },
+  "password": "Passw0rd!"
+}
+
+> {%
+  client.test("duplicate email is rejected", () => {
+    if (response.status < 400) throw new Error(`Expected an error status for duplicate email, got ${response.status}`);
+  });
+%}
+
+### -------------------------------------------------
+### 7) Cleanup: delete the Keycloak user created above
+### -------------------------------------------------
+DELETE {{keycloakBaseUrl}}/admin/realms/{{keycloakRealm}}/users/{{newUserKeycloakId}}
+Authorization: Bearer {{kcAdminToken}}
+
