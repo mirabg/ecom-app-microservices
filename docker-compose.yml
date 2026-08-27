@@ -1,4 +1,49 @@
 services:
+  kafka:
+    # The old bitnami/kafka:3.5.1 tag was removed from Docker Hub when Bitnami
+    # retired its free legacy images, so pulls fail with "not found".
+    # apache/kafka is the officially maintained image; it reads plain KAFKA_*
+    # env vars (Bitnami's KAFKA_CFG_* prefix does NOT apply here).
+    image: apache/kafka:3.9.2
+    container_name: kafka_container
+    environment:
+      # KRaft mode - no ZooKeeper required. The previous config pointed at a
+      # `zookeeper` service that was never defined, which made the whole
+      # compose project invalid.
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: "controller,broker"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      # Two client listeners so both worlds can connect:
+      #   INTERNAL -> other containers on the `backend` network (kafka:29092)
+      #   EXTERNAL -> apps running on the host, e.g. services started from the
+      #               IDE (localhost:9092)
+      # The advertised address is what the broker hands back to clients, so a
+      # single `kafka:9092` listener would be unresolvable from the host.
+      KAFKA_LISTENERS: "INTERNAL://:29092,EXTERNAL://:9092,CONTROLLER://:9093"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka:29092,EXTERNAL://localhost:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      # Single-broker dev cluster: internal topics can't use the default RF of 3.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - backend
+    restart: unless-stopped
   rabbitmq:
     image: rabbitmq:3.9.29-management
     container_name: rabbitmq-bus
@@ -10,6 +55,8 @@ services:
       RABBITMQ_DEFAULT_PASS: guest
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - backend
     restart: unless-stopped
   postgres:
     container_name: postgres_container
@@ -35,6 +82,14 @@ services:
       - backend
     restart: unless-stopped
 
+  config-server:
+    container_name: config-server
+    build: ./config-server
+    ports:
+      - "8888:8888"
+    networks:
+      - backend
+    restart: unless-stopped
   mongodb:
     container_name: mongodb_container
     image: mongo:7
@@ -84,6 +139,15 @@ services:
       - backend
     restart: unless-stopped
 
+  api-gateway:
+    container_name: api-gateway
+    build: ./api-gateway
+    ports:
+      - "8080:8080"
+    networks:
+      - backend
+    restart: unless-stopped
+
 networks:
     backend:
       driver: bridge
@@ -92,3 +156,4 @@ volumes:
     postgres:
     mongodb:
     rabbitmq_data:
+    kafka_data:
