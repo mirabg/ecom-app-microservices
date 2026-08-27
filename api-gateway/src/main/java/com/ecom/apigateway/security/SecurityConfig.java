@@ -6,6 +6,7 @@ import org.springframework.boot.security.oauth2.server.resource.autoconfigure.OA
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -35,9 +36,25 @@ public class SecurityConfig {
                     // hasRole("X") checks for authority "ROLE_X", which matches what
                     // jwtAuthenticationConverter() produces (it already prefixes
                     // realm roles with "ROLE_").
+                    //
+                    // USER is the role user-service assigns to every account it
+                    // provisions (keycloak.default-role), so it means "a signed-up
+                    // customer". PRODUCT and ORDER are staff roles that are NOT
+                    // handed out automatically - requiring them for ordinary
+                    // shopping made every customer 403 on the catalogue and on
+                    // their own cart.
                     .pathMatchers("/api/users/**").hasRole("USER")
+
+                    // Browsing the catalogue is open to any customer; changing it
+                    // (create/update/delete) stays restricted to catalogue staff.
+                    .pathMatchers(HttpMethod.GET, "/api/products/**").hasAnyRole("USER", "PRODUCT")
                     .pathMatchers("/api/products/**").hasRole("PRODUCT")
-                    .pathMatchers("/api/orders/**", "/api/cart/**").hasRole("ORDER")
+
+                    // Customers manage their own cart and place their own orders;
+                    // ORDER additionally grants access for back-office staff.
+                    .pathMatchers("/api/cart/**").hasAnyRole("USER", "ORDER")
+                    .pathMatchers("/api/orders/**").hasAnyRole("USER", "ORDER")
+
                     .anyExchange().authenticated())
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
         return http.build();
