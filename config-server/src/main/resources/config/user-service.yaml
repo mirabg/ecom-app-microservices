@@ -1,23 +1,29 @@
 spring:
   application:
     name: user-service
-  data:
-    mongodb:
-      uri: ${MONGO_URL}
+  # NOTE: `spring.data.mongodb.uri` was deprecated at ERROR level in Boot 4.0
+  # and is no longer bound - it silently fell back to the default
+  # mongodb://localhost/test, which only appeared to work when the app ran on
+  # the same host as the database. The connection settings now live under
+  # `spring.mongodb.*`; `spring.data.mongodb.*` keeps only repository settings.
+  mongodb:
+    uri: ${MONGO_URL:mongodb://localhost:27017/userdb}
   rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
 server:
   port: 8082
 management:
   tracing:
     sampling:
       probability: 1.0
-  zipkin:
-    tracing:
-      endpoint: ${ZIPKIN_TRACING_ENDPOINT:http://localhost:9411/api/v2/spans}
+    # `management.zipkin.tracing.endpoint` is deprecated at ERROR level since
+    # Boot 3.2 (silently ignored -> defaulted to localhost:9411).
+    export:
+      zipkin:
+        endpoint: ${ZIPKIN_TRACING_ENDPOINT:http://localhost:9411/api/v2/spans}
   endpoints:
     web:
       exposure:
@@ -32,9 +38,12 @@ management:
 eureka:
   client:
     serviceUrl:
-      defaultZone: http://localhost:8761/eureka
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
     register-with-eureka: true
     fetch-registry: true
+  instance:
+    prefer-ip-address: ${EUREKA_PREFER_IP:false}
+    hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
 
 # Used by KeycloakAdminClient to provision a Keycloak user (and assign a realm
 # role) whenever a new local User is created. admin-client-id/secret must be a

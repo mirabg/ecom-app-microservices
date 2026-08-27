@@ -75,9 +75,11 @@ management:
   tracing:
     sampling:
       probability: 1.0
-  zipkin:
-    tracing:
-      endpoint: ${ZIPKIN_TRACING_ENDPOINT:http://localhost:9411/api/v2/spans}
+    # `management.zipkin.tracing.endpoint` is deprecated at ERROR level since
+    # Boot 3.2 (silently ignored -> defaulted to localhost:9411).
+    export:
+      zipkin:
+        endpoint: ${ZIPKIN_TRACING_ENDPOINT:http://localhost:9411/api/v2/spans}
 
 logging:
   level:

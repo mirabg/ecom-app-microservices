@@ -2,7 +2,17 @@ spring:
   application:
     name: order-service
   config:
-    import: optional:configserver:http://localhost:8888
+    # No `optional:` prefix - an unreachable config server must fail loudly
+    # rather than let the app boot with no datasource/eureka/rabbit config.
+    import: configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+  cloud:
+    config:
+      fail-fast: true
+      retry:
+        max-attempts: 20
+        initial-interval: 2000
+        multiplier: 1.1
+        max-interval: 10000
 
 logging:
     level:

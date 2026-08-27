@@ -82,11 +82,29 @@ services:
       - backend
     restart: unless-stopped
 
+  eureka:
+    container_name: eureka
+    build: ./eureka
+    ports:
+      - "8761:8761"
+    networks:
+      - backend
+    restart: unless-stopped
+
   config-server:
     container_name: config-server
     build: ./config-server
     ports:
       - "8888:8888"
+    environment:
+      EUREKA_URL: http://eureka:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: config-server
+      # spring-cloud-starter-bus-amqp is on the classpath, so an AMQP
+      # connection is opened at startup.
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      - eureka
+      - rabbitmq
     networks:
       - backend
     restart: unless-stopped
@@ -139,11 +157,127 @@ services:
       - backend
     restart: unless-stopped
 
+  product-service:
+    container_name: product-service
+    build: ./product
+    ports:
+      - "8083:8083"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_URL: http://eureka:8761/eureka/
+      # order-service resolves `http://product-service` through Eureka, so the
+      # registered hostname must match this container's network alias.
+      EUREKA_INSTANCE_HOSTNAME: product-service
+      DB_HOST: postgres
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      RABBITMQ_HOST: rabbitmq
+      ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - config-server
+      - postgres
+      - rabbitmq
+    networks:
+      - backend
+    restart: unless-stopped
+
+  user-service:
+    container_name: user-service
+    build: ./user
+    ports:
+      - "8082:8082"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_URL: http://eureka:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: user-service
+      MONGO_URL: mongodb://root:root@mongodb:27017/userdb?authSource=admin
+      RABBITMQ_HOST: rabbitmq
+      ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      KEYCLOAK_SERVER_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-ecom-app}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-user-service-admin}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-2iaX0dpf1zkXq7k7fLKHj9Yjg2rOs41L}
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - config-server
+      - mongodb
+      - rabbitmq
+      - keycloak
+    networks:
+      - backend
+    restart: unless-stopped
+
+  order-service:
+    container_name: order-service
+    build: ./orders
+    ports:
+      - "8084:8084"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_URL: http://eureka:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: order-service
+      DB_HOST: postgres
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      RABBITMQ_HOST: rabbitmq
+      ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - config-server
+      - postgres
+      - rabbitmq
+      - product-service
+      - user-service
+    networks:
+      - backend
+    restart: unless-stopped
+
+  notification-service:
+    container_name: notification-service
+    build: ./notification-service
+    ports:
+      - "8085:8085"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_URL: http://eureka:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: notification-service
+      RABBITMQ_HOST: rabbitmq
+      ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - config-server
+      - rabbitmq
+    networks:
+      - backend
+    restart: unless-stopped
+
   api-gateway:
     container_name: api-gateway
     build: ./api-gateway
     ports:
       - "8080:8080"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_URL: http://eureka:8761/eureka/
+      # Feeds the @Value in GatewayConfig for the eureka-dashboard routes.
+      EUREKA_DASHBOARD_URL: http://eureka:8761
+      EUREKA_INSTANCE_HOSTNAME: api-gateway
+      ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      # issuer-uri must match the `iss` claim of tokens minted for browser
+      # logins against localhost:8180; jwk-set-uri is the URL this container
+      # actually calls to fetch signing keys. Setting jwk-set-uri explicitly
+      # skips OIDC discovery, so the two are allowed to differ.
+      KEYCLOAK_ISSUER_URI: http://localhost:8180/realms/${KEYCLOAK_REALM:-ecom-app}
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/${KEYCLOAK_REALM:-ecom-app}/protocol/openid-connect/certs
+    depends_on:
+      # Start-order hint only; the gateway retries the config fetch itself
+      # (spring.cloud.config.retry), so readiness is not required here.
+      - config-server
     networks:
       - backend
     restart: unless-stopped

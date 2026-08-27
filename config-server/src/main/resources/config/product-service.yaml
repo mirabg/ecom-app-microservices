@@ -2,7 +2,7 @@ spring:
   application:
     name: product-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/productdb
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/productdb
     username: ${DB_USER}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -12,19 +12,24 @@ spring:
       ddl-auto: create
     database: postgresql
   rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
 server:
   port: 8083
 management:
   tracing:
     sampling:
       probability: 1.0
-  zipkin:
-    tracing:
-      endpoint: ${ZIPKIN_TRACING_ENDPOINT:http://localhost:9411/api/v2/spans}
+    # NOTE: `management.zipkin.tracing.endpoint` was deprecated at ERROR level
+    # in Boot 3.2 and is no longer bound - it silently fell back to the default
+    # http://localhost:9411/api/v2/spans, which only worked when the collector
+    # ran on the same host. The property now lives under
+    # `management.tracing.export.zipkin.*`.
+    export:
+      zipkin:
+        endpoint: ${ZIPKIN_TRACING_ENDPOINT:http://localhost:9411/api/v2/spans}
   endpoints:
     web:
       exposure:
@@ -38,9 +43,15 @@ management:
 eureka:
   client:
     serviceUrl:
-      defaultZone: http://localhost:8761/eureka
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
     register-with-eureka: true
     fetch-registry: true
+  instance:
+    # order-service reaches this app via `http://product-service` (load
+    # balanced through Eureka), so the registered hostname must be resolvable
+    # from other containers - a bridge IP or bare `localhost` is not.
+    prefer-ip-address: ${EUREKA_PREFER_IP:false}
+    hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
 logging:
   level:
     root: INFO

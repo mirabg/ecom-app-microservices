@@ -2,7 +2,23 @@ spring:
   application:
     name: api-gateway
   config:
-    import:  optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+    # NOTE: no `optional:` prefix. With it, an unreachable config server is
+    # silently ignored and the gateway boots with zero remote config (no eureka
+    # URL, no resilience4j instances, no OAuth2 issuer) - a silent failure that
+    # looks like a working app until every request 404s or 401s.
+    import: configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+  cloud:
+    config:
+      # Abort startup if config cannot be loaded...
+      fail-fast: true
+      # ...but only after retrying, so a slow-starting config-server container
+      # is tolerated. Requires spring-retry + spring-boot-starter-aop on the
+      # classpath, otherwise these settings are silently ignored.
+      retry:
+        max-attempts: 20
+        initial-interval: 2000
+        multiplier: 1.1
+        max-interval: 10000
 
 
 
