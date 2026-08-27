@@ -51,8 +51,10 @@ services:
       - "5672:5672"   # AMQP protocol port for Spring Cloud Bus
       - "15672:15672" # Management UI
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      # Same variables the Spring services use, so broker and clients can never
+      # drift apart.
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
@@ -62,8 +64,11 @@ services:
     container_name: postgres_container
     image: postgres:14
     environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: root
+      # DB_USER/DB_PASSWORD are the same variables product-service and
+      # order-service use to connect, so the server and its clients cannot be
+      # configured inconsistently.
+      POSTGRES_USER: ${DB_USER:-root}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-root}
       PGDATA: /data/postgres
     volumes:
       - postgres:/data/postgres
@@ -102,6 +107,8 @@ services:
       # spring-cloud-starter-bus-amqp is on the classpath, so an AMQP
       # connection is opened at startup.
       RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
     depends_on:
       - eureka
       - rabbitmq
@@ -112,8 +119,9 @@ services:
     container_name: mongodb_container
     image: mongo:7
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: root
+      # Shared with user-service's MONGO_URL below.
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-root}
     ports:
       - "27017:27017"
     volumes:
@@ -148,8 +156,8 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: admin
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: root
-      KC_DB_PASSWORD: root
+      KC_DB_USERNAME: ${DB_USER:-root}
+      KC_DB_PASSWORD: ${DB_PASSWORD:-root}
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
     volumes:
@@ -180,6 +188,8 @@ services:
       DB_USER: ${DB_USER:-root}
       DB_PASSWORD: ${DB_PASSWORD:-root}
       RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
     volumes:
       - ./logs:/app/logs
@@ -200,8 +210,10 @@ services:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://eureka:8761/eureka/
       EUREKA_INSTANCE_HOSTNAME: user-service
-      MONGO_URL: mongodb://root:root@mongodb:27017/userdb?authSource=admin
+      MONGO_URL: mongodb://${MONGO_USER:-root}:${MONGO_PASSWORD:-root}@mongodb:27017/userdb?authSource=admin
       RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
       KEYCLOAK_SERVER_URL: http://keycloak:8080
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-ecom-app}
@@ -231,6 +243,8 @@ services:
       DB_USER: ${DB_USER:-root}
       DB_PASSWORD: ${DB_PASSWORD:-root}
       RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
     volumes:
       - ./logs:/app/logs
@@ -254,6 +268,8 @@ services:
       EUREKA_URL: http://eureka:8761/eureka/
       EUREKA_INSTANCE_HOSTNAME: notification-service
       RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
     volumes:
       - ./logs:/app/logs
