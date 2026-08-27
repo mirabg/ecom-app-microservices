@@ -9,7 +9,10 @@ spring:
   jpa:
     show-sql: true
     hibernate:
-      ddl-auto: create
+      # `create` drops and recreates the schema on every start, wiping all data
+      # whenever the container restarts. `update` creates missing tables/columns
+      # and leaves existing rows alone.
+      ddl-auto: ${JPA_DDL_AUTO:update}
     database: postgresql
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}

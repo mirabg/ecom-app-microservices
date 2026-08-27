@@ -1,0 +1,57 @@
+{
+  "realm": "ecom-app",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "roles": {
+    "realm": [
+      {
+        "name": "USER",
+        "description": "Assigned by user-service to every newly provisioned user (keycloak.default-role). Required by the gateway for /api/users/**."
+      },
+      {
+        "name": "PRODUCT",
+        "description": "Required by the gateway for /api/products/**."
+      },
+      {
+        "name": "ORDER",
+        "description": "Required by the gateway for /api/orders/** and /api/cart/**."
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "user-service-admin",
+      "name": "user-service admin client",
+      "description": "Confidential client used by user-service (KeycloakAdminClient) to provision users through the Admin REST API. Service-to-service only, never used for end-user login.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "secret": "2iaX0dpf1zkXq7k7fLKHj9Yjg2rOs41L",
+      "redirectUris": [],
+      "webOrigins": []
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-user-service-admin",
+      "enabled": true,
+      "serviceAccountClientId": "user-service-admin",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users",
+          "view-realm"
+        ]
+      }
+    }
+  ]
+}

@@ -139,7 +139,10 @@ services:
   keycloak:
     container_name: keycloak_container
     image: quay.io/keycloak/keycloak:25.0.6
-    command: start-dev
+    # --import-realm reads every *.json under /opt/keycloak/data/import on
+    # startup. Import is skipped for realms that already exist, so this is safe
+    # on restart and only re-provisions after the Postgres volume is wiped.
+    command: start-dev --import-realm
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
@@ -149,6 +152,11 @@ services:
       KC_DB_PASSWORD: root
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
+    volumes:
+      # Realm definition (roles, the user-service-admin confidential client and
+      # its service-account role mappings) so a fresh `docker compose up` after
+      # `down -v` yields a working realm with no manual console clicking.
+      - ./keycloak/realm-export:/opt/keycloak/data/import:ro
     ports:
       - "8180:8080"
     depends_on:
